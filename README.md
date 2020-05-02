@@ -1,18 +1,21 @@
 # RHLinePlot
 Line plot like in Robinhood app, in pure SwiftUI
 
-Demo:
+Demo (higher-res on [Reddit](https://www.reddit.com/r/SwiftUI/comments/g0hcct/rhlineplot_demo_a_robinhoodlike_line_plot_in/))
 
 ![Demo](https://raw.githubusercontent.com/aunnnn/RHLinePlot/master/rhplot-demo-new.gif)
 
+*Looking for how to do the **moving price label effect**? [Another repo here.](https://github.com/aunnnn/MovingNumbersView)*
+
+Demo stock API is from [Alphavantage](https://www.alphavantage.co).
+
 ## Features
+- Support drag interaction, highlight active segment
 - Support glowing indicator, i.e. for real-time data
-- Highlight active segment
+- Customize animation duration, glowing size, labels etc.
 - Laser mode!
 
-Play around with the example app to see possible customizations and the Robinhood-style view shown in the demo. 
-
-The **moving price effect** in that page would be worthy of another repo [here](https://github.com/aunnnn/MovingNumbersView).
+Play around with the example app to see possible customizations and the Robinhood-style view shown in the demo.
 
 ## Installation
 Just use the source however you like. The library is in folder `RHLinePlot`.
@@ -117,8 +120,15 @@ public struct RHLinePlotConfig {
     /// Padding from the lowest point of line plot to value stick. If `0`, the end of value stick will be at the same level of the lowest point in plot.
     public var valueStickBottomPadding: CGFloat = 28
     
-    
     public var spaceBetweenValueStickAndStickLabel: CGFloat = 8
+
+    /// Duration of long press before the value stick is activated and draggable.
+    ///
+    /// The more it is, the less likely the interactive part is activated accidentally on scroll view. Default is `0.1`.
+    ///
+    /// There's some lower-bound on this value that I guess coming from delaysContentTouches of
+    /// the ScrollView. So if this is `0`, iit won't immediately activate the long press (but quickly horizontal pan will).
+    public var minimumPressDurationToActivateInteraction: Double = 0.1
     
     public static let `default` = RHLinePlotConfig()
     
@@ -130,4 +140,4 @@ public struct RHLinePlotConfig {
 }
 ```
 ## TODO
-- Dragging in the interactive plot consumes all the gestures. If you put it in a `ScrollView`, you can't scroll the scroll view in the interactive plot area, you'd be interacting with the plot instead.
+- ~Dragging in the interactive plot consumes all the gestures. If you put it in a `ScrollView`, you can't scroll the scroll view in the interactive plot area, you'd be interacting with the plot instead.~ - Fixed by using a clear [proxy view](https://github.com/aunnnn/RHLinePlot/blob/master/RHLinePlot/PressAndHorizontalDragGesture.swift) to handle gestures

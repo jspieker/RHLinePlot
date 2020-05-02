@@ -41,7 +41,7 @@ public struct RHInteractiveLinePlot<StickLabel, Indicator>: View
     /// Strategy to use to search for an active segment.
     let segmentSearchStrategy: SegmentSearchStrategy
     
-    @GestureState var isDragging: Bool = false
+    @State var isDragging: Bool = false
     @State private var draggableIndicatorOffset: CGFloat = 0
     @State private var currentlySelectedIndex: Int? = nil
     @State private var currentlySelectedSegmentIndex: Int? = nil
@@ -174,7 +174,8 @@ public struct RHInteractiveLinePlot<StickLabel, Indicator>: View
                     alignment: .leading
             )
                 .contentShape(Rectangle())
-                .gesture(touchAndDrag(canvas: relativeWidthCanvas))
+//                .gesture(touchAndDrag(canvas: relativeWidthCanvas))
+            .overlay(pressAndDragProxyView(canvas: relativeWidthCanvas))
         }
     }
 }
@@ -227,34 +228,61 @@ private extension RHInteractiveLinePlot {
         return canvas.minX + target.clamp(low: 0, high: referencedWidth)
     }
     
-    func touchAndDrag(canvas: CGRect) -> some Gesture {
-        let drag = DragGesture(minimumDistance: 0)
-            .updating($isDragging) { (value, state, _) in
-                state = true
-        }.onChanged { (value) in
-            self.draggableIndicatorOffset = value.location.x
-                .clamp(low: canvas.minX, high: canvas.maxX)
+// Just in case we come back to here.
+//    func touchAndDrag(canvas: CGRect) -> some Gesture {
+//        let drag = DragGesture(minimumDistance: 0)
+//            .updating($isDragging) { (value, state, _) in
+//                state = true
+//        }.onChanged { (value) in
+//            self.draggableIndicatorOffset = value.location.x
+//                .clamp(low: canvas.minX, high: canvas.maxX)
+//
+//            self.currentlySelectedIndex = self.getEffectiveIndex(canvas: canvas)
+//            self.didSelectValueAtIndex?(self.currentlySelectedIndex)
+//
+//            let activeSegment: Int?
+//            if let segments = self.lineSegmentStartingIndices,
+//                let currentIndex = self.currentlySelectedIndex
+//            {
+//                switch self.segmentSearchStrategy {
+//                case .binarySearch:
+//                    activeSegment = binarySearchOrIndexToTheLeft(array: segments, value: currentIndex)
+//                }
+//            } else {
+//                activeSegment = nil
+//            }
+//            if self.currentlySelectedSegmentIndex != activeSegment {
+//                self.currentlySelectedSegmentIndex = activeSegment
+//                self.didSelectSegmentAtIndex?(activeSegment)
+//            }
+//        }
+//        .onEnded { (_) in
+//            self.draggableIndicatorOffset = canvas.maxX
+//
+//            self.currentlySelectedIndex = nil
+//            self.didSelectValueAtIndex?(nil)
+//
+//            if self.currentlySelectedSegmentIndex != nil {
+//                self.currentlySelectedSegmentIndex = nil
+//                self.didSelectSegmentAtIndex?(nil)
+//            }
+//        }
+//        return drag
+//    }
+    
+    /// A proxy view to handle gestures.
+    func pressAndDragProxyView(canvas: CGRect) -> some View {
+        let minimumPressDuration = rhPlotConfig.minimumPressDurationToActivateInteraction
+        return PressAndHorizontalDragGestureView(
+            minimumPressDuration: minimumPressDuration,
+            onBegan: { (value) in
+                self.isDragging = true
+                self.onStickLocationChanged(newX: value.location.x, canvas: canvas)
+        }, onChanged: { (value) in
+            self.onStickLocationChanged(newX: value.location.x, canvas: canvas)
+        }, onEnded: { _ in
+            self.isDragging = false
             
-            self.currentlySelectedIndex = self.getEffectiveIndex(canvas: canvas)
-            self.didSelectValueAtIndex?(self.currentlySelectedIndex)
-            
-            let activeSegment: Int?
-            if let segments = self.lineSegmentStartingIndices,
-                let currentIndex = self.currentlySelectedIndex
-            {
-                switch self.segmentSearchStrategy {
-                case .binarySearch:
-                    activeSegment = binarySearchOrIndexToTheLeft(array: segments, value: currentIndex)
-                }
-            } else {
-                activeSegment = nil
-            }
-            if self.currentlySelectedSegmentIndex != activeSegment {
-                self.currentlySelectedSegmentIndex = activeSegment
-                self.didSelectSegmentAtIndex?(activeSegment)
-            }
-        }
-        .onEnded { (_) in
             self.draggableIndicatorOffset = canvas.maxX
             
             self.currentlySelectedIndex = nil
@@ -264,7 +292,30 @@ private extension RHInteractiveLinePlot {
                 self.currentlySelectedSegmentIndex = nil
                 self.didSelectSegmentAtIndex?(nil)
             }
+        })
+    }
+    
+    private func onStickLocationChanged(newX: CGFloat, canvas: CGRect) {
+        self.draggableIndicatorOffset = newX
+            .clamp(low: canvas.minX, high: canvas.maxX)
+        
+        self.currentlySelectedIndex = self.getEffectiveIndex(canvas: canvas)
+        self.didSelectValueAtIndex?(self.currentlySelectedIndex)
+
+        let activeSegment: Int?
+        if let segments = self.lineSegmentStartingIndices,
+            let currentIndex = self.currentlySelectedIndex
+        {
+            switch self.segmentSearchStrategy {
+            case .binarySearch:
+                activeSegment = binarySearchOrIndexToTheLeft(array: segments, value: currentIndex)
+            }
+        } else {
+            activeSegment = nil
         }
-        return drag
+        if self.currentlySelectedSegmentIndex != activeSegment {
+            self.currentlySelectedSegmentIndex = activeSegment
+            self.didSelectSegmentAtIndex?(activeSegment)
+        }
     }
 }
